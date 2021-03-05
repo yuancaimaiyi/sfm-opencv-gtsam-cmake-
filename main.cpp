@@ -438,68 +438,16 @@ int main(int argc, char **argv)
         cout << "initial graph error = " << graph.error(initial) << endl;
         cout << "final graph error = " << graph.error(result) << endl;
     }
-
-    // Create output files for PMVS2
-    {
-        using namespace gtsam;
-
-        Matrix3 K_refined = result.at<Cal3_S2>(Symbol('K', 0)).K();
-
-        cout << endl << "final camera matrix K" << endl << K_refined << endl;
-
-        // Convert to full resolution camera matrix
-        K_refined(0, 0) *= IMAGE_DOWNSAMPLE;
-        K_refined(1, 1) *= IMAGE_DOWNSAMPLE;
-        K_refined(0, 2) *= IMAGE_DOWNSAMPLE;
-        K_refined(1, 2) *= IMAGE_DOWNSAMPLE;
-
-        system("mkdir -p root/visualize");
-        system("mkdir -p root/txt");
-        system("mkdir -p root/models");
-
-        ofstream option("root/options.txt");
-
-        option << "timages  -1 " << 0 << " " << (SFM.img_pose.size()-1) << endl;;
-        option << "oimages 0" << endl;
-        option << "level 1" << endl;
-
-        option.close();
-
-        for (size_t i=0; i < SFM.img_pose.size(); i++) {
+ // output roll ,pitch,yaw 
+    for (size_t i=0; i < SFM.img_pose.size(); i++) {
             Eigen::Matrix<double, 3, 3> R;
             Eigen::Matrix<double, 3, 1> t;
             Eigen::Matrix<double, 3, 4> P;
-            char str[256];
-
             R = result.at<Pose3>(Symbol('x', i)).rotation().matrix();
             Eigen::Vector3d eulerAngle=R.eulerAngles(2,1,0);
             t = result.at<Pose3>(Symbol('x', i)).translation().vector();
             std::cout<<IMAGES[i]<<" "<<"roll:"<<eulerAngle(2)<<" "<<"pitch:"<<eulerAngle(1)<<" "<<"yaw:"<<eulerAngle(0)<<std::endl;
-            P.block(0, 0, 3, 3) = R.transpose();
-            P.col(3) = -R.transpose()*t;
-            P = K_refined*P;
-
-            sprintf(str, "cp -f %s/%s root/visualize/%04d.jpg", IMAGE_DIR.c_str(), IMAGES[i].c_str(), (int)i);
-            system(str);
-            //imwrite(str, SFM.img_pose[i].img);
-
-
-            sprintf(str, "root/txt/%04d.txt", (int)i);
-            ofstream out(str);
-
-            out << "CONTOUR" << endl;
-
-            for (int j=0; j < 3; j++) {
-                for (int k=0; k < 4; k++) {
-                    out << P(j, k) << " ";
-                }
-                out << endl;
-            }
         }
-
-        cout << endl;
-        cout << "You can now run pmvs2 on the results eg. PATH_TO_PMVS_BINARY/pmvs2 root/ options.txt" << endl;
-    }
 
 	return 0;
 }
